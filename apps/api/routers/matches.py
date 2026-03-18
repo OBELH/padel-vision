@@ -166,9 +166,30 @@ def video_status(match_id: uuid.UUID, db: Session = Depends(get_db)):
 
     highlights = db.query(Highlight).filter(Highlight.match_id == match_id).all()
     clips_count = sum(1 for h in highlights if h.clip_path)
+    auto_count = sum(1 for h in highlights if h.source == "auto")
 
     return {
         "has_video": bool(match.video_path),
         "total_highlights": len(highlights),
         "clips_generated": clips_count,
+        "auto_highlights": auto_count,
     }
+
+
+@router.post("/{match_id}/analyze-video")
+def analyze_video(match_id: uuid.UUID, db: Session = Depends(get_db)):
+    """AI-powered video analysis: audio peaks + Claude Vision classification."""
+    from services.auto_highlights import analyze_match_video
+
+    match = db.get(Match, match_id)
+    if not match:
+        raise HTTPException(404, "Match not found")
+    if not match.video_path:
+        raise HTTPException(400, "No video uploaded for this match")
+
+    result = analyze_match_video(match_id, db)
+
+    if "error" in result:
+        raise HTTPException(400, result["error"])
+
+    return result

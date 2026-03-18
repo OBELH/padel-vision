@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from db.base import Base
 from db.session import engine
 from models import *  # noqa: F401,F403
-from routers import clubs, highlights, matches, players
+from routers import analytics, auth, clubs, highlights, matches, notifications, players
 
 UPLOADS_DIR = Path(__file__).resolve().parent / "uploads"
 UPLOADS_DIR.mkdir(exist_ok=True)
@@ -20,7 +20,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Padel API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Padel API", version="0.1.0", lifespan=lifespan, redirect_slashes=False)
 
 app.add_middleware(
     CORSMiddleware,
@@ -30,10 +30,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
 app.include_router(clubs.router)
 app.include_router(players.router)
 app.include_router(matches.router)
 app.include_router(highlights.router)
+app.include_router(notifications.router)
+app.include_router(analytics.router)
 
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 

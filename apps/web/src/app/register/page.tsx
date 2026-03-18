@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
 import { Loader2 } from "lucide-react"
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter()
-  const { login, user } = useAuth()
+  const { register, user } = useAuth()
+  const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -24,13 +25,18 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    setLoading(true)
 
-    const result = await login(email, password)
+    if (password.length < 6) {
+      setError("Le mot de passe doit contenir au moins 6 caractères")
+      return
+    }
+
+    setLoading(true)
+    const result = await register(email, password, fullName)
     if (result.ok) {
       router.push("/dashboard/club")
     } else {
-      setError(result.error || "Erreur de connexion")
+      setError(result.error || "Erreur d'inscription")
     }
     setLoading(false)
   }
@@ -39,8 +45,8 @@ export default function LoginPage() {
     <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center px-4 sm:min-h-[calc(100vh-4rem)]">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold">Connexion</h1>
-          <p className="text-sm text-muted-foreground">Accédez à votre espace padel</p>
+          <h1 className="text-2xl font-bold">Inscription</h1>
+          <p className="text-sm text-muted-foreground">Créez votre compte Padel Vision</p>
         </div>
 
         {error && (
@@ -50,6 +56,19 @@ export default function LoginPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="fullName" className="mb-1 block text-sm font-medium">Nom complet</label>
+            <input
+              id="fullName"
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              className="w-full rounded-md border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder="Jean Dupont"
+              required
+              disabled={loading}
+            />
+          </div>
           <div>
             <label htmlFor="email" className="mb-1 block text-sm font-medium">Email</label>
             <input
@@ -71,20 +90,21 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-md border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder="6 caractères minimum"
               required
               disabled={loading}
             />
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Se connecter
+            Créer mon compte
           </Button>
         </form>
 
         <p className="text-center text-sm text-muted-foreground">
-          Pas encore de compte ?{" "}
-          <Link href="/register" className="font-medium text-primary hover:underline">
-            S&apos;inscrire
+          Déjà un compte ?{" "}
+          <Link href="/login" className="font-medium text-primary hover:underline">
+            Se connecter
           </Link>
         </p>
       </div>

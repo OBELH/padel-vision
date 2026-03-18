@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { apiFetch } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Users, Trophy, MapPin, Activity } from "lucide-react"
+import { Users, Trophy, MapPin, Activity, Clock, ChevronRight } from "lucide-react"
 
 interface Club {
   id: string
@@ -41,14 +41,14 @@ interface Match {
 
 function StatCard({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string | number }) {
   return (
-    <div className="rounded-lg border bg-card p-4">
+    <div className="rounded-lg border bg-card p-3 sm:p-4">
       <div className="flex items-center gap-3">
         <div className="rounded-md bg-primary/10 p-2">
-          <Icon className="h-5 w-5 text-primary" />
+          <Icon className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
         </div>
         <div>
-          <p className="text-2xl font-bold">{value}</p>
-          <p className="text-xs text-muted-foreground">{label}</p>
+          <p className="text-xl font-bold sm:text-2xl">{value}</p>
+          <p className="text-[11px] text-muted-foreground sm:text-xs">{label}</p>
         </div>
       </div>
     </div>
@@ -119,16 +119,16 @@ export default function ClubDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">{selectedClub?.name}</h1>
-          <p className="flex items-center gap-1 text-sm text-muted-foreground">
+          <h1 className="text-xl font-bold sm:text-2xl">{selectedClub?.name}</h1>
+          <p className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
             <MapPin className="h-3 w-3" /> {selectedClub?.city} — {selectedClub?.address}
           </p>
         </div>
         {clubs.length > 1 && (
           <select
-            className="rounded-md border px-3 py-1.5 text-sm"
+            className="w-full rounded-md border px-3 py-1.5 text-sm sm:w-auto"
             value={selectedClub?.id}
             onChange={(e) => setSelectedClub(clubs.find((c) => c.id === e.target.value) || null)}
           >
@@ -140,7 +140,7 @@ export default function ClubDashboard() {
       </div>
 
       {stats && (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <StatCard icon={MapPin} label="Terrains" value={stats.courts_count} />
           <StatCard icon={Users} label="Joueurs" value={stats.total_players} />
           <StatCard icon={Trophy} label="Matchs joués" value={stats.completed_matches} />
@@ -150,7 +150,9 @@ export default function ClubDashboard() {
 
       <div>
         <h2 className="mb-3 text-lg font-semibold">Matchs récents</h2>
-        <div className="overflow-hidden rounded-lg border">
+
+        {/* Desktop table */}
+        <div className="hidden overflow-hidden rounded-lg border sm:block">
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>
@@ -180,17 +182,45 @@ export default function ClubDashboard() {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile cards */}
+        <div className="space-y-2 sm:hidden">
+          {matches.map((m) => (
+            <Link key={m.id} href={`/match/${m.id}`} className="block">
+              <div className="rounded-lg border p-3 transition-colors hover:bg-accent/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={m.status} />
+                    <span className="text-sm font-medium">Court {m.court_number || "—"}</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{new Date(m.scheduled_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                  {m.score_team_a && (
+                    <span className="font-mono font-medium text-foreground">{m.score_team_a}</span>
+                  )}
+                  {m.duration_minutes && (
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" /> {m.duration_minutes} min
+                    </span>
+                  )}
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
       </div>
 
       <div>
         <h2 className="mb-3 text-lg font-semibold">Joueurs du club</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
           {players.map((p) => (
             <Link key={p.id} href={`/player/${p.id}`} className="block">
-              <div className="rounded-lg border p-4 transition-colors hover:bg-accent/50">
+              <div className="rounded-lg border p-3 transition-colors hover:bg-accent/50 sm:p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-semibold">{p.full_name}</p>
+                    <p className="text-sm font-semibold sm:text-base">{p.full_name}</p>
                     {p.nickname && <p className="text-xs text-muted-foreground">&quot;{p.nickname}&quot;</p>}
                   </div>
                   <LevelBadge level={p.level} />

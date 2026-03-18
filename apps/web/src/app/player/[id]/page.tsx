@@ -5,7 +5,9 @@ import { useParams } from "next/navigation"
 import Link from "next/link"
 import { apiFetch } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Trophy, Zap, Target, Wind, Clock, Share2 } from "lucide-react"
+import { Trophy, Zap, Target, Wind, Clock, Share2, Check } from "lucide-react"
+import { shareContent, getPlayerShareUrl } from "@/lib/share"
+import { trackView, trackShare } from "@/lib/analytics"
 
 interface Player {
   id: string
@@ -36,7 +38,7 @@ interface PlayerStats {
   }[]
 }
 
-function MatchCard({ player, stats }: { player: Player; stats: PlayerStats }) {
+function PlayerCard({ player, stats }: { player: Player; stats: PlayerStats }) {
   const levelColors: Record<string, string> = {
     beginner: "from-gray-500 to-gray-700",
     intermediate: "from-blue-500 to-blue-700",
@@ -46,47 +48,47 @@ function MatchCard({ player, stats }: { player: Player; stats: PlayerStats }) {
   const gradient = levelColors[player.level || ""] || "from-green-500 to-emerald-700"
 
   return (
-    <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${gradient} p-6 text-white shadow-xl`}>
+    <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${gradient} p-5 text-white shadow-xl sm:p-6`}>
       <div className="absolute inset-0 opacity-10">
         <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full border-4 border-white" />
         <div className="absolute -bottom-4 -left-4 h-24 w-24 rounded-full border-4 border-white" />
       </div>
       <div className="relative">
-        <div className="mb-4 flex items-start justify-between">
+        <div className="mb-3 flex items-start justify-between sm:mb-4">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wider opacity-80">Padel Vision</p>
-            <h2 className="text-2xl font-bold">{player.full_name}</h2>
-            {player.nickname && <p className="text-sm opacity-80">&quot;{player.nickname}&quot;</p>}
+            <p className="text-[10px] font-medium uppercase tracking-wider opacity-80 sm:text-xs">Padel Vision</p>
+            <h2 className="text-xl font-bold sm:text-2xl">{player.full_name}</h2>
+            {player.nickname && <p className="text-xs opacity-80 sm:text-sm">&quot;{player.nickname}&quot;</p>}
           </div>
-          <div className="rounded-lg bg-white/20 px-3 py-1 text-sm font-bold uppercase backdrop-blur-sm">
+          <div className="rounded-lg bg-white/20 px-2.5 py-0.5 text-xs font-bold uppercase backdrop-blur-sm sm:px-3 sm:py-1 sm:text-sm">
             {player.level || "N/A"}
           </div>
         </div>
-        <div className="mb-5 flex items-end gap-2">
-          <span className="text-5xl font-black">{stats.win_rate}</span>
-          <span className="mb-1 text-lg opacity-80">% win</span>
+        <div className="mb-4 flex items-end gap-2 sm:mb-5">
+          <span className="text-4xl font-black sm:text-5xl">{stats.win_rate}</span>
+          <span className="mb-0.5 text-base opacity-80 sm:mb-1 sm:text-lg">% win</span>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <div className="rounded-lg bg-white/15 p-2 text-center backdrop-blur-sm">
-            <p className="text-xl font-bold">{stats.total_matches}</p>
-            <p className="text-[10px] uppercase tracking-wider opacity-70">Matchs</p>
+            <p className="text-lg font-bold sm:text-xl">{stats.total_matches}</p>
+            <p className="text-[9px] uppercase tracking-wider opacity-70 sm:text-[10px]">Matchs</p>
           </div>
           <div className="rounded-lg bg-white/15 p-2 text-center backdrop-blur-sm">
-            <p className="text-xl font-bold">{stats.wins}</p>
-            <p className="text-[10px] uppercase tracking-wider opacity-70">Victoires</p>
+            <p className="text-lg font-bold sm:text-xl">{stats.wins}</p>
+            <p className="text-[9px] uppercase tracking-wider opacity-70 sm:text-[10px]">Victoires</p>
           </div>
           <div className="rounded-lg bg-white/15 p-2 text-center backdrop-blur-sm">
-            <p className="text-xl font-bold">{stats.smashes}</p>
-            <p className="text-[10px] uppercase tracking-wider opacity-70">Smashs</p>
+            <p className="text-lg font-bold sm:text-xl">{stats.smashes}</p>
+            <p className="text-[9px] uppercase tracking-wider opacity-70 sm:text-[10px]">Smashs</p>
           </div>
         </div>
-        <div className="mt-4 flex items-center justify-between border-t border-white/20 pt-3">
-          <div className="flex gap-4 text-xs opacity-70">
+        <div className="mt-3 flex items-center justify-between border-t border-white/20 pt-2.5 sm:mt-4 sm:pt-3">
+          <div className="flex gap-3 text-[11px] opacity-70 sm:gap-4 sm:text-xs">
             <span>{stats.aces} aces</span>
             <span>{stats.lobs} lobs</span>
             <span>{stats.total_highlights} highlights</span>
           </div>
-          <div className="flex items-center gap-1 text-xs opacity-70">
+          <div className="flex items-center gap-1 text-[11px] opacity-70 sm:text-xs">
             <Clock className="h-3 w-3" />
             {Math.round(stats.total_play_time_minutes / 60)}h jouées
           </div>
@@ -100,9 +102,11 @@ export default function PlayerPage() {
   const params = useParams()
   const [player, setPlayer] = useState<Player | null>(null)
   const [stats, setStats] = useState<PlayerStats | null>(null)
+  const [shareToast, setShareToast] = useState<string | null>(null)
 
   useEffect(() => {
     if (!params.id) return
+    trackView("player", params.id as string)
     Promise.all([
       apiFetch<Player>(`/api/players/${params.id}`),
       apiFetch<PlayerStats>(`/api/players/${params.id}/stats`),
@@ -112,42 +116,62 @@ export default function PlayerPage() {
   }, [params.id])
 
   if (!player || !stats) {
-    return <div className="p-8 text-muted-foreground">Chargement du joueur...</div>
+    return <div className="p-4 text-muted-foreground sm:p-8">Chargement du joueur...</div>
   }
 
   return (
-    <div className="mx-auto max-w-3xl p-8">
-      <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Profil joueur</h1>
-        <Button variant="outline" size="sm" className="gap-2">
+    <div className="mx-auto max-w-3xl p-4 sm:p-8">
+      <div className="mb-6 flex items-center justify-between sm:mb-8">
+        <h1 className="text-2xl font-bold sm:text-3xl">Profil joueur</h1>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={async () => {
+            const url = getPlayerShareUrl(player.id)
+            const result = await shareContent({
+              title: `${player.full_name} - Padel Vision`,
+              text: `${player.full_name} — ${stats.win_rate}% win rate, ${stats.total_matches} matchs sur Padel Vision`,
+              url,
+            })
+            trackShare("player", player.id, result === "shared" ? "webshare" : "clipboard")
+            if (result === "copied") {
+              setShareToast("Lien copié !")
+              setTimeout(() => setShareToast(null), 2000)
+            } else if (result === "shared") {
+              setShareToast("Partagé !")
+              setTimeout(() => setShareToast(null), 2000)
+            }
+          }}
+        >
           <Share2 className="h-4 w-4" /> Partager
         </Button>
       </div>
 
-      <div className="mx-auto mb-8 max-w-sm">
-        <MatchCard player={player} stats={stats} />
+      <div className="mx-auto mb-6 max-w-sm sm:mb-8">
+        <PlayerCard player={player} stats={stats} />
       </div>
 
-      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className="rounded-lg border p-4 text-center">
-          <Trophy className="mx-auto mb-1 h-5 w-5 text-primary" />
-          <p className="text-2xl font-bold">{stats.win_rate}%</p>
-          <p className="text-xs text-muted-foreground">Win rate</p>
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:mb-8 sm:grid-cols-4 sm:gap-4">
+        <div className="rounded-lg border p-3 text-center sm:p-4">
+          <Trophy className="mx-auto mb-1 h-4 w-4 text-primary sm:h-5 sm:w-5" />
+          <p className="text-xl font-bold sm:text-2xl">{stats.win_rate}%</p>
+          <p className="text-[11px] text-muted-foreground sm:text-xs">Win rate</p>
         </div>
-        <div className="rounded-lg border p-4 text-center">
-          <Zap className="mx-auto mb-1 h-5 w-5 text-yellow-500" />
-          <p className="text-2xl font-bold">{stats.smashes}</p>
-          <p className="text-xs text-muted-foreground">Smashs</p>
+        <div className="rounded-lg border p-3 text-center sm:p-4">
+          <Zap className="mx-auto mb-1 h-4 w-4 text-yellow-500 sm:h-5 sm:w-5" />
+          <p className="text-xl font-bold sm:text-2xl">{stats.smashes}</p>
+          <p className="text-[11px] text-muted-foreground sm:text-xs">Smashs</p>
         </div>
-        <div className="rounded-lg border p-4 text-center">
-          <Target className="mx-auto mb-1 h-5 w-5 text-red-500" />
-          <p className="text-2xl font-bold">{stats.aces}</p>
-          <p className="text-xs text-muted-foreground">Aces</p>
+        <div className="rounded-lg border p-3 text-center sm:p-4">
+          <Target className="mx-auto mb-1 h-4 w-4 text-red-500 sm:h-5 sm:w-5" />
+          <p className="text-xl font-bold sm:text-2xl">{stats.aces}</p>
+          <p className="text-[11px] text-muted-foreground sm:text-xs">Aces</p>
         </div>
-        <div className="rounded-lg border p-4 text-center">
-          <Wind className="mx-auto mb-1 h-5 w-5 text-blue-500" />
-          <p className="text-2xl font-bold">{stats.lobs}</p>
-          <p className="text-xs text-muted-foreground">Lobs</p>
+        <div className="rounded-lg border p-3 text-center sm:p-4">
+          <Wind className="mx-auto mb-1 h-4 w-4 text-blue-500 sm:h-5 sm:w-5" />
+          <p className="text-xl font-bold sm:text-2xl">{stats.lobs}</p>
+          <p className="text-[11px] text-muted-foreground sm:text-xs">Lobs</p>
         </div>
       </div>
 
@@ -164,16 +188,16 @@ export default function PlayerPage() {
               <Link key={m.match_id} href={`/match/${m.match_id}`} className="block">
                 <div className={`flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-accent/50 ${isWinner ? "border-l-4 border-l-green-500" : m.status === "completed" ? "border-l-4 border-l-red-400" : ""}`}>
                   <div>
-                    <p className="text-sm font-medium">
+                    <p className="text-xs font-medium sm:text-sm">
                       {new Date(m.scheduled_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
                     </p>
-                    <p className="text-xs text-muted-foreground">Team {m.team} — {m.duration_minutes ? `${m.duration_minutes} min` : "—"}</p>
+                    <p className="text-[11px] text-muted-foreground sm:text-xs">Team {m.team} — {m.duration_minutes ? `${m.duration_minutes} min` : "—"}</p>
                   </div>
                   <div className="text-right">
                     {m.status === "completed" ? (
                       <>
-                        <p className="font-mono text-sm font-semibold">{m.score_team_a}</p>
-                        <p className={`text-xs font-medium ${isWinner ? "text-green-600" : "text-red-500"}`}>
+                        <p className="font-mono text-xs font-semibold sm:text-sm">{m.score_team_a}</p>
+                        <p className={`text-[11px] font-medium sm:text-xs ${isWinner ? "text-green-600" : "text-red-500"}`}>
                           {isWinner ? "Victoire" : "Défaite"}
                         </p>
                       </>
@@ -187,6 +211,16 @@ export default function PlayerPage() {
           })}
         </div>
       </div>
+
+      {/* Share toast */}
+      {shareToast && (
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background shadow-lg">
+            <Check className="h-4 w-4" />
+            {shareToast}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

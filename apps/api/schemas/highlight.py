@@ -23,4 +23,6 @@ class HighlightRead(HighlightBase):
     match_id: uuid.UUID
     clip_path: str | None = None
     thumbnail_path: str | None = None
+    confidence: int | None = None
+    source: str | None = "manual"
     created_at: datetime

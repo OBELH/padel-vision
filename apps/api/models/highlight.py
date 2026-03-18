@@ -19,6 +19,8 @@ class Highlight(Base):
     video_url: Mapped[str | None] = mapped_column(String(500))
     clip_path: Mapped[str | None] = mapped_column(String(500))
     thumbnail_path: Mapped[str | None] = mapped_column(String(500))
+    confidence: Mapped[int | None] = mapped_column(Integer)
+    source: Mapped[str | None] = mapped_column(String(20), default="manual")
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     match: Mapped["Match"] = relationship(back_populates="highlights")
