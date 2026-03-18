@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "Padel Vision",
+    "slug": "padel-vision",
+    "version": "0.1.0",
+    "scheme": "padel",
+    "platforms": ["ios", "android"],
+    "icon": "./assets/icon.png",
+    "splash": {
+      "backgroundColor": "#22c55e"
+    },
+    "plugins": ["expo-router"]
+  }
+}

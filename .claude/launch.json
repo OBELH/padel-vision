@@ -1,0 +1,26 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["node_modules/next/dist/bin/next", "dev"],
+      "port": 3000,
+      "cwd": "apps/web"
+    },
+    {
+      "name": "api",
+      "runtimeExecutable": "C:\\Users\\obelhassine\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+      "runtimeArgs": ["-m", "uvicorn", "main:app", "--reload", "--port", "8000"],
+      "port": 8000,
+      "cwd": "apps/api"
+    },
+    {
+      "name": "mobile",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["node_modules/@expo/cli/build/bin/cli", "start", "--port", "8081"],
+      "port": 8081,
+      "cwd": "apps/mobile"
+    }
+  ]
+}
